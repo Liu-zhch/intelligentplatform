@@ -132,4 +132,8 @@ public class AdminUserService {
         }
     }
 
+    public AdminUser getAdminUser(String adminName){
+        return adminUserRepository.findFirstByAdminName(adminName);
+    }
+
 }

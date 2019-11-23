@@ -25,4 +25,5 @@ public interface Constant {
     }
     String DEFAULT_ADMIN_NAME = "admin";
     String DEFAULT_ADMIN_PASSWD = "admin";
+    String USER_SESSION_KEY = "user";
 }
