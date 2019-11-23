@@ -113,14 +113,14 @@ public class AdminUserService {
         }
         List<AdminUser> adminUsers = adminUserRepository.findAllByRoleType(user.getRoleType());
         switch (user.getRoleType()) {
-            case 1:
-            case 2:
-            case 3: {
+            case 1:{
                 if (adminUsers.size() >= 4) {
                     throw new IntelligentException("该角色的账号容量达到上限");
                 }
                 break;
             }
+            case 2:
+            case 3:
             case 4: {
                 if (adminUsers.size() >= 11) {
                     throw new IntelligentException("该角色的账号容量达到上限");
