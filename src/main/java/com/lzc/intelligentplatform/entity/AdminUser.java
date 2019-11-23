@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.util.Set;
 
 @Data
 @Document(collection = "admin_user")
@@ -18,6 +19,7 @@ public class AdminUser {
     /**
      * 1,一级管理员 2，二级管理员 3，三级管理员 4,四级管理员
      */
+    @NotNull(message = "用户角色不能为空")
     @Range(min = 1, max = 4, message = "角色类型不合法")
     private Integer roleType;
     /**
@@ -50,4 +52,8 @@ public class AdminUser {
      * 最近更新时间
      */
     private Long lastUpdateTime;
+    /**
+     * 管理员负责的辖区id
+     */
+    private Set<String> jurisdictions;
 }

@@ -51,6 +51,7 @@ public class AdminUserService {
 
     public void addAdminUser(AdminUser user) throws IntelligentException {
         checkAdminExist(user);
+        user.setId(UUID.randomUUID().toString().replace("-",""));
         user.setCreateTime(System.currentTimeMillis());
         user.setLastUpdateTime(user.getCreateTime());
         adminUserRepository.save(user);
