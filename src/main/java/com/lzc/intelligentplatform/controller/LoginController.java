@@ -33,10 +33,12 @@ public class LoginController {
                 message.setData(user);
                 session.setAttribute(Constant.USER_SESSION_KEY, user);
                 return message;
+            }else {
+                message.setCode(Constant.ResponseCode.FAILED);
+                message.setMessage("密码错误");
+                return message;
             }
-            message.setCode(Constant.ResponseCode.FAILED);
-            message.setMessage("账号不存在");
-            return message;
+
         } catch (Exception e) {
             ExceptionHandle.handle(e, message);
             return message;

@@ -5,6 +5,7 @@ import com.lzc.intelligentplatform.entity.AdminUser;
 import com.lzc.intelligentplatform.exception.IntelligentException;
 import com.lzc.intelligentplatform.repository.AdminUserRepository;
 import com.lzc.intelligentplatform.request.AdminListRequest;
+import com.lzc.intelligentplatform.response.AdminListResponse;
 import com.lzc.intelligentplatform.util.Constant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
+import javax.servlet.http.HttpSession;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -49,40 +51,78 @@ public class AdminUserService {
         }
     }
 
-    public void addAdminUser(AdminUser user) throws IntelligentException {
+    public void addAdminUser(AdminUser user, HttpSession session) throws IntelligentException {
+        AdminUser sessionUser = (AdminUser) session.getAttribute(Constant.USER_SESSION_KEY);
+        if (sessionUser == null) {
+            throw new IntelligentException("请先登录");
+        }
+        if (!sessionUser.getRoleType().equals(Constant.RoleType.LEVEL1)
+                && !sessionUser.getRoleType().equals(Constant.RoleType.LEVEL2)) {
+            throw new IntelligentException("无权限添加用户");
+        }
+        if (sessionUser.getRoleType().equals(Constant.RoleType.LEVEL2) &&
+                user.getRoleType().equals(Constant.RoleType.LEVEL1)) {
+            throw new IntelligentException("您没有权限添加超级用户");
+        }
         checkAdminExist(user);
-        user.setId(UUID.randomUUID().toString().replace("-",""));
+        user.setId(UUID.randomUUID().toString().replace("-", ""));
         user.setCreateTime(System.currentTimeMillis());
         user.setLastUpdateTime(user.getCreateTime());
         adminUserRepository.save(user);
     }
 
-    public List<AdminUser> getAdminUser(AdminListRequest request) {
+    public AdminListResponse getAdminUser(AdminListRequest request, HttpSession session) throws IntelligentException {
+        AdminUser sessionUser = (AdminUser) session.getAttribute(Constant.USER_SESSION_KEY);
+        if (sessionUser == null) {
+            throw new IntelligentException("请先登录");
+        }
+        if (sessionUser.getRoleType() > Constant.RoleType.LEVEL2) {
+            throw new IntelligentException("无权限操作");
+        }
         Criteria criteria = new Criteria();
         Query query = new Query();
+        if (sessionUser.getRoleType().equals(Constant.RoleType.LEVEL2)) {
+            criteria.and("roleType").gte(Constant.RoleType.LEVEL2);
+        }
         if (!StringUtils.isEmpty(request.getProperty())) {
             criteria.and(request.getProperty()).regex(request.getMatch());
         }
         query.addCriteria(criteria);
+        long total = template.count(query, AdminUser.class);
         if (request.getPageNum() != null && request.getPageSize() != null) {
             Pageable pageable = PageRequest.of(request.getPageNum() - 1, request.getPageSize());
             query.with(pageable);
         }
-        return template.find(query, AdminUser.class);
+        AdminListResponse response = new AdminListResponse();
+        response.setPageNum(request.getPageNum());
+        response.setPageSize(request.getPageSize());
+        response.setTotal(total);
+        response.setAdminUsers(template.find(query, AdminUser.class));
+        return response;
     }
 
-    public void delAdminUser(Set<String> ids) throws IntelligentException {
+    public void delAdminUser(Set<String> ids,HttpSession session) throws IntelligentException {
+        AdminUser sessionUser = (AdminUser) session.getAttribute(Constant.USER_SESSION_KEY);
+        if (sessionUser == null) {
+            throw new IntelligentException("请先登录");
+        }
+        if (sessionUser.getRoleType() > Constant.RoleType.LEVEL2) {
+            throw new IntelligentException("无权限操作");
+        }
         if (ids.isEmpty()) {
             return;
         }
         List<AdminUser> l1 = adminUserRepository.findAllByRoleType(Constant.RoleType.LEVEL1);
         Set<String> l1Ids = l1.stream().map(l -> l.getId()).collect(Collectors.toSet());
+        if (sessionUser.getRoleType().equals(Constant.RoleType.LEVEL2) && !l1Ids.isEmpty()){
+            throw new IntelligentException("您无法删除超级管理员");
+        }
         l1Ids.removeAll(ids);
         if (l1Ids.isEmpty()) {
-            throw new IntelligentException("请至少保留一个一级管理账户!");
+            throw new IntelligentException("请至少保留一个超级管理员账户!");
         }
         List<AdminUser> adminUsers = adminUserRepository.findByIdIn(ids);
-        if (adminUsers.size() == 0){
+        if (adminUsers.size() == 0) {
             log.info("查询失败");
             return;
         }
@@ -91,7 +131,7 @@ public class AdminUserService {
     }
 
     public void checkAdminExist(AdminUser user) throws IntelligentException {
-        if (StringUtils.isEmpty(user.getPassword())){
+        if (StringUtils.isEmpty(user.getPassword())) {
             throw new IntelligentException("请设置账号密码");
         }
         if (!StringUtils.isEmpty(user.getAdminName())) {
@@ -114,7 +154,7 @@ public class AdminUserService {
         }
         List<AdminUser> adminUsers = adminUserRepository.findAllByRoleType(user.getRoleType());
         switch (user.getRoleType()) {
-            case 1:{
+            case 1: {
                 if (adminUsers.size() >= 4) {
                     throw new IntelligentException("该角色的账号容量达到上限");
                 }
@@ -133,7 +173,7 @@ public class AdminUserService {
         }
     }
 
-    public AdminUser getAdminUser(String adminName){
+    public AdminUser getAdminUser(String adminName) {
         return adminUserRepository.findFirstByAdminName(adminName);
     }
 

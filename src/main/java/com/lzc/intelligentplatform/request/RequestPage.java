@@ -6,5 +6,5 @@ import lombok.Data;
 public class RequestPage {
     private Integer pageSize;
     private Integer pageNum;
-    private Integer total;
+    private Long total;
 }
